@@ -64,7 +64,7 @@ config MALI_MIDGARD_ENABLE_TRACE
 config MALI_DEVFREQ
 	bool "devfreq support for Mali"
 	depends on MALI_MIDGARD && PM_DEVFREQ
-	default y
+	default n
 	help
 	  Support devfreq for Mali.
 
@@ -82,10 +82,15 @@ config MALI_DMA_FENCE
 	  This option should only be enabled if the Linux Kernel has built in
 	  support for DMA_BUF fences.
 
-config MALI_PLATFORM_NAME
+# MALI_SEC_INTEGRATION
+config MALI_PLATFORM_THIRDPARTY
+	default y
+	bool "Third Party Platform"
+
+config MALI_PLATFORM_THIRDPARTY_NAME
 	depends on MALI_MIDGARD
 	string "Platform name"
-	default "devicetree"
+	default "exynos"
 	help
 	  Enter the name of the desired platform configuration directory to
 	  include in the build. 'platform/$(MALI_PLATFORM_NAME)/Kbuild' must
@@ -135,7 +140,7 @@ config MALI_DEBUG
 config MALI_FENCE_DEBUG
 	bool "Debug sync fence usage"
 	depends on MALI_MIDGARD && MALI_EXPERT && (SYNC || SYNC_FILE)
-	default y if MALI_DEBUG
+	default y
 	help
 	  Select this option to enable additional checking and reporting on the
 	  use of sync fences in the Mali driver.
@@ -343,5 +348,5 @@ config MALI_PRFCNT_SET_SELECT_VIA_DEBUG_FS
 
 	  If unsure, say N.
 
-source "drivers/gpu/arm/midgard/platform/Kconfig"
-source "drivers/gpu/arm/midgard/tests/Kconfig"
+source "drivers/gpu/arm/b_r31p0/platform/Kconfig"
+source "drivers/gpu/arm/b_r31p0/tests/Kconfig"

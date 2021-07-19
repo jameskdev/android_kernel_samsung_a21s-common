@@ -158,6 +158,13 @@ struct kbasep_pm_metrics_state {
 	u32 active_gl_ctx[3];
 #endif
 	spinlock_t lock;
+/* MALI_SEC_INTEGRATION */
+/* #ifdef CONFIG_MALI_MIDGARD_DVFS */
+	struct hrtimer timer;
+	bool timer_active;
+/* MALI_SEC_INTEGRATION */
+	struct delayed_work work;
+/* #endif */
 
 	void *platform_data;
 	struct kbase_device *kbdev;
@@ -170,6 +177,12 @@ struct kbasep_pm_metrics_state {
 	bool timer_active;
 	struct kbasep_pm_metrics dvfs_last;
 	struct kbasep_pm_metrics dvfs_diff;
+#endif
+
+/* MALI_SEC_INTEGRATION */
+#ifdef CONFIG_MALI_SEC_CL_BOOST
+	atomic_t time_compute_jobs, time_vertex_jobs, time_fragment_jobs;
+	bool is_full_compute_util;  /* Only compute utilisation is 100% */
 #endif
 };
 
@@ -398,6 +411,8 @@ struct kbase_pm_backend_data {
 	void (*callback_power_runtime_off)(struct kbase_device *kbdev);
 	int (*callback_power_runtime_idle)(struct kbase_device *kbdev);
 	int (*callback_soft_reset)(struct kbase_device *kbdev);
+	/* MALI_SEC_INTEGRATION */
+	int (*callback_power_dvfs_on)(struct kbase_device *kbdev);
 
 	u64 ca_cores_enabled;
 

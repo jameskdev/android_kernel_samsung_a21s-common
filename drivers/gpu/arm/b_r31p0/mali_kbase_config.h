@@ -202,6 +202,11 @@ struct kbase_pm_callback_conf {
 	 * be raised. On error, return the corresponding OS error code.
 	 */
 	int (*soft_reset_callback)(struct kbase_device *kbdev);
+
+	/* MALI_SEC_INTEGRATION */
+	/** Callback for GPU DVFS handler start/stop
+	**/
+	int (*power_dvfs_on_callback)(struct kbase_device *kbdev);
 };
 
 /* struct kbase_gpu_clk_notifier_data - Data for clock rate change notifier.

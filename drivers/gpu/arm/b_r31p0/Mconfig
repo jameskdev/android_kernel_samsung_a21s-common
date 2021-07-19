@@ -290,4 +290,4 @@ config MALI_GEM5_BUILD
 # config MALI_PRFCNT_SET_TERTIARY exists in the Kernel Kconfig but is configured using CINSTR_TERTIARY_HWC in Mconfig.
 # config MALI_PRFCNT_SET_SELECT_VIA_DEBUG_FS exists in the Kernel Kconfig but is configured using CINSTR_HWC_SET_SELECT_VIA_DEBUG_FS in Mconfig.
 
-source "kernel/drivers/gpu/arm/midgard/tests/Mconfig"
+source "kernel/drivers/gpu/arm/b_r31p0/tests/Mconfig"
