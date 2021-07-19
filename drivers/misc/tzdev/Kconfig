@@ -146,12 +146,6 @@ config TZDEV_QC_CRYPTO_CLOCKS_USR_MNG
 	  Enable QC HW crypto clock management from User space. If disabled,
 	  QC HW clock disable/enable is done in TZDEV.
 
-config TZDEV_DEBUG
-	bool "Debug extensions"
-	default n
-	help
-	  Debug extensions for samsung TZ Based Secure OS interface driver.
-
 config TZ_NWFS
 	bool "Normal world file system interface driver"
 	default y
@@ -188,53 +182,5 @@ choice
 		depends on TZDEV_SK_MULTICORE
 		bool "Use smpboot hotplug subsystem"
 endchoice
-
-if TZDEV_DEBUG
-
-config TZPROFILER
-	bool "TZDEV PROFILING support"
-	default n
-	help
-	  Enable support for secure kernel and userspace profiling.
-
-config TZPROFILER_BUF_PG_CNT
-	int "TZDEV PROFILER buffer size (in pages)"
-	depends on TZPROFILER
-	default 1
-	help
-	  Select TZDEV profiler buffer size in pages. Profiler uses pool
-	  of buffers. This is size of each buffer. Minimum size is a 1 page.
-	  Select the sufficient size for profiling of the target.
-
-config TZPROFILER_BUFS_CNT
-	int "TZDEV PROFILER buffers quantity"
-	depends on TZPROFILER
-	default 20
-	help
-	  Select the sufficient pool size for profiling of the target.
-	  Profiler uses two mechanisms for profiler data transferring.
-	  1. Circular buffer.
-	  2. Buffer replacing if according to the point 1 NWd had no time for
-	     cleaning the previous buffer.
-	  The profiler stops working if there are no free buffers in pool.
-
-config TZ_PANIC_DUMP
-	bool "TZ panic dump module"
-	depends on TZDEV
-	default n
-	help
-	  Enable panic dump module. This module allocates the buffer that will
-	  receive SWd memory contents when secure kernel panic
-	  occurs (if proper option is set in secure kernel config) and
-	  provides interface for userspace to access said memory contents.
-
-config TZ_PMF
-	bool "Performance Measurement Framework enables"
-	depends on TZDEV
-	default n
-	help
-	  Enable Performance Measurement Framework in the tzdev.
-
-endif #TZDEV_DEBUG
 
 endif #TZDEV
