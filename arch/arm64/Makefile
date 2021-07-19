@@ -118,7 +118,6 @@ KBUILD_DTBS	:= dtbs
 
 all:	Image.gz $(KBUILD_DTBS)
 
-
 Image: vmlinux
 	$(Q)$(MAKE) $(build)=$(boot) $(boot)/$@
 
@@ -129,6 +128,9 @@ zinstall install:
 	$(Q)$(MAKE) $(build)=$(boot) $@
 
 %.dtb: scripts
+	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
+
+%.dtbo: scripts
 	$(Q)$(MAKE) $(build)=$(boot)/dts $(boot)/dts/$@
 
 PHONY += dtbs dtbs_install

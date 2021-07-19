@@ -385,6 +385,11 @@ static inline void netdev_set_addr_lockdep_class(struct net_device *dev)
 
 static inline struct list_head *ptype_head(const struct packet_type *pt)
 {
+	struct list_head *ret = dropdump_ptype_head(pt);
+
+	if (unlikely(ret))
+		return ret;
+
 	if (pt->type == htons(ETH_P_ALL))
 		return pt->dev ? &pt->dev->ptype_all : &ptype_all;
 	else
@@ -4260,6 +4265,8 @@ drop:
 	local_irq_restore(flags);
 
 	atomic_long_inc(&skb->dev->rx_dropped);
+
+	DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_CORE_BACKLOGFAIL);
 	kfree_skb(skb);
 	return NET_RX_DROP;
 }
@@ -4466,6 +4473,10 @@ static int netif_rx_internal(struct sk_buff *skb)
 	net_timestamp_check(netdev_tstamp_prequeue, skb);
 
 	trace_netif_rx(skb);
+
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	skb->dropmask = PACKET_IN;
+#endif
 
 #ifdef CONFIG_RPS
 	if (static_key_false(&rps_needed)) {
@@ -4925,6 +4936,8 @@ drop:
 			atomic_long_inc(&skb->dev->rx_dropped);
 		else
 			atomic_long_inc(&skb->dev->rx_nohandler);
+
+		DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_CORE_BACKLOGFAIL1);
 		kfree_skb(skb);
 		/* Jamal, now you will not able to escape explaining
 		 * me how you were going to use this. :-)
@@ -5137,6 +5150,9 @@ static int netif_receive_skb_internal(struct sk_buff *skb)
 
 	net_timestamp_check(netdev_tstamp_prequeue, skb);
 
+#ifdef CONFIG_NET_SUPPORT_DROPDUMP
+	skb->dropmask = PACKET_IN;
+#endif
 	if (skb_defer_rx_timestamp(skb))
 		return NET_RX_SUCCESS;
 
@@ -5849,7 +5865,11 @@ static int process_backlog(struct napi_struct *napi, int quota)
 			rcu_read_unlock();
 			input_queue_head_incr(sd);
 			if (++work >= quota)
+#ifdef CONFIG_MODEM_IF_NET_GRO
+				goto state_changed;
+#else
 				return work;
+#endif
 
 		}
 
@@ -5873,6 +5893,12 @@ static int process_backlog(struct napi_struct *napi, int quota)
 		rps_unlock(sd);
 		local_irq_enable();
 	}
+
+#ifdef CONFIG_MODEM_IF_NET_GRO
+state_changed:
+	napi_gro_flush(napi, false);
+	sd->current_napi = NULL;
+#endif
 
 	return work;
 }
@@ -6268,6 +6294,11 @@ static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 	 */
 	work = 0;
 	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
+#ifdef CONFIG_MODEM_IF_NET_GRO
+		struct softnet_data *sd = this_cpu_ptr(&softnet_data);
+
+		sd->current_napi = n;
+#endif
 		work = n->poll(n, weight);
 		trace_napi_poll(n, work, weight);
 	}
@@ -6310,6 +6341,20 @@ out_unlock:
 
 	return work;
 }
+
+#if defined(CONFIG_EXYNOS_MODEM_IF)
+struct napi_struct *napi_get_current(void)
+{
+#ifdef CONFIG_MODEM_IF_NET_GRO
+	struct softnet_data *sd = this_cpu_ptr(&softnet_data);
+
+	return sd->current_napi;
+#else
+	return NULL;
+#endif
+}
+EXPORT_SYMBOL(napi_get_current);
+#endif
 
 static __latent_entropy void net_rx_action(struct softirq_action *h)
 {

@@ -4,3 +4,6 @@ obj-y					+= ion/
 
 obj-$(CONFIG_ASHMEM)			+= ashmem.o
 obj-$(CONFIG_ANDROID_VSOC)		+= vsoc.o
+obj-$(CONFIG_ANDROID_SWITCH)           += switch/
+
+obj-$(CONFIG_SAMSUNG_LMKD_DEBUG)		+= lmkd_debug.o

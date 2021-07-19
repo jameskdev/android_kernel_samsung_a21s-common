@@ -667,6 +667,8 @@ static void tcp_v4_send_reset(const struct sock *sk, struct sk_buff *skb)
 	struct net *net;
 	struct sock *ctl_sk;
 
+	DROPDUMP_CLEAR_SKB(skb);
+
 	/* Never send a reset in response to a reset. */
 	if (th->rst)
 		return;
@@ -1574,6 +1576,7 @@ discard:
 csum_err:
 	TCP_INC_STATS(sock_net(sk), TCP_MIB_CSUMERRORS);
 	TCP_INC_STATS(sock_net(sk), TCP_MIB_INERRS);
+	DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS3);
 	goto discard;
 }
 EXPORT_SYMBOL(tcp_v4_do_rcv);
@@ -1637,6 +1640,7 @@ bool tcp_add_backlog(struct sock *sk, struct sk_buff *skb)
 	if (unlikely(sk_add_backlog(sk, skb, limit))) {
 		bh_unlock_sock(sk);
 		__NET_INC_STATS(sock_net(sk), LINUX_MIB_TCPBACKLOGDROP);
+		DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_TCP_BACKLOGDROP1);
 		return true;
 	}
 	return false;
@@ -1787,6 +1791,7 @@ process:
 	}
 	if (unlikely(iph->ttl < inet_sk(sk)->min_ttl)) {
 		__NET_INC_STATS(net, LINUX_MIB_TCPMINTTLDROP);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_MINTTLDROP);
 		goto discard_and_relse;
 	}
 
@@ -1838,14 +1843,17 @@ no_tcp_socket:
 	if (tcp_checksum_complete(skb)) {
 csum_error:
 		__TCP_INC_STATS(net, TCP_MIB_CSUMERRORS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_CSUMERRORS);
 bad_packet:
 		__TCP_INC_STATS(net, TCP_MIB_INERRS);
+		DROPDUMP_QUEUE_SKB(skb, NET_DROPDUMP_TCP_MIB_INERRS4);
 	} else {
 		tcp_v4_send_reset(NULL, skb);
 	}
 
 discard_it:
 	/* Discard frame. */
+	DROPDUMP_CHECK_SKB(skb);
 	kfree_skb(skb);
 	return 0;
 

@@ -283,3 +283,6 @@ obj-$(CONFIG_GENERIC_LIB_LSHRDI3) += lshrdi3.o
 obj-$(CONFIG_GENERIC_LIB_MULDI3) += muldi3.o
 obj-$(CONFIG_GENERIC_LIB_CMPDI2) += cmpdi2.o
 obj-$(CONFIG_GENERIC_LIB_UCMPDI2) += ucmpdi2.o
+
+obj-$(CONFIG_DEBUG_SNAPSHOT) += debug-snapshot.o debug-snapshot-log.o debug-snapshot-utils.o \
+				debug-snapshot-pstore.o debug-snapshot-sysfs.o debug-snapshot-helper.o debug-snapshot-dpm.o

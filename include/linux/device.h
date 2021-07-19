@@ -26,6 +26,7 @@
 #include <linux/uidgid.h>
 #include <linux/gfp.h>
 #include <linux/overflow.h>
+#include <linux/slab.h>
 #include <asm/device.h>
 
 struct device;
@@ -1027,6 +1028,9 @@ struct device {
 	/* arch specific additions */
 	struct dev_archdata	archdata;
 
+	/* soc specific additions */
+	struct dev_socdata	socdata;
+
 	struct device_node	*of_node; /* associated device tree node */
 	struct fwnode_handle	*fwnode; /* firmware device node */
 
@@ -1112,6 +1116,24 @@ static inline void *dev_get_drvdata(const struct device *dev)
 static inline void dev_set_drvdata(struct device *dev, void *data)
 {
 	dev->driver_data = data;
+}
+
+#define DEV_SOCDATA_MAGIC	(0xCAFEBABE)
+static inline void dev_set_socdata(struct device *dev,
+					const char *soc, const char *ip)
+{
+	if (dev && soc && ip) {
+		dev->socdata.magic = DEV_SOCDATA_MAGIC;
+		dev->socdata.soc = soc;
+		dev->socdata.ip = ip;
+	}
+}
+
+static inline struct device *create_empty_device(void)
+{
+	struct device *dev = kzalloc(sizeof(*dev), GFP_KERNEL);
+
+	return dev;
 }
 
 static inline struct pm_subsys_data *dev_to_psd(struct device *dev)
@@ -1433,6 +1455,17 @@ static inline __printf(2, 3)
 void _dev_info(const struct device *dev, const char *fmt, ...)
 {}
 
+#endif
+
+#ifdef CONFIG_SEC_DEBUG_AUTO_COMMENT
+__printf(3, 4)
+void dev_printk_auto(const char *level, const struct device *dev,
+		const char *fmt, ...);
+#define dev_auto(level, dev, fmt, ...)			\
+	dev_printk_auto(KERN_AUTO level, dev, dev_fmt(fmt), ##__VA_ARGS__)
+#else
+#define dev_auto(level, dev, fmt, ...)			\
+	_dev_emerg(dev, dev_fmt(fmt), ##__VA_ARGS__)
 #endif
 
 /*

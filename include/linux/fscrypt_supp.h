@@ -27,6 +27,10 @@ struct fscrypt_operations {
 	const char *key_prefix;
 	int (*get_context)(struct inode *, void *, size_t);
 	int (*set_context)(struct inode *, const void *, size_t, void *);
+#if defined(CONFIG_DDAR) || defined(CONFIG_FSCRYPT_SDP)
+	int (*get_knox_context)(struct inode *, const char *, void *, size_t);
+	int (*set_knox_context)(struct inode *, const char *, const void *, size_t, void *);
+#endif
 	bool (*dummy_context)(struct inode *);
 	bool (*empty_dir)(struct inode *);
 	unsigned int max_namelen;
@@ -84,6 +88,16 @@ extern int fscrypt_inherit_context(struct inode *, struct inode *,
 /* keyinfo.c */
 extern int fscrypt_get_encryption_info(struct inode *);
 extern void fscrypt_put_encryption_info(struct inode *);
+#ifdef CONFIG_FSCRYPT_SDP
+extern int fscrypt_get_encryption_key(struct inode *inode,
+						struct fscrypt_key *key);
+extern int fscrypt_get_encryption_key_classified(struct inode *inode,
+						struct fscrypt_key *key);
+extern int fscrypt_get_encryption_kek(struct inode *inode,
+						struct fscrypt_info *crypt_info,
+						struct fscrypt_key *kek);
+
+#endif
 
 /* fname.c */
 extern int fscrypt_setup_filename(struct inode *, const struct qstr *,
@@ -181,6 +195,9 @@ extern void fscrypt_enqueue_decrypt_bio(struct fscrypt_ctx *ctx,
 extern void fscrypt_pullback_bio_page(struct page **, bool);
 extern int fscrypt_zeroout_range(const struct inode *, pgoff_t, sector_t,
 				 unsigned int);
+void fscrypt_set_bio(const struct inode *inode, struct bio *bio, u64 dun);
+void *fscrypt_get_diskcipher(const struct inode *inode);
+int fscrypt_disk_encrypted(const struct inode *inode);
 
 /* hooks.c */
 extern int fscrypt_file_open(struct inode *inode, struct file *filp);

@@ -3,12 +3,21 @@
 # kbuild file for firmware/
 #
 
+CONFIG_EXTRA_FIRMWARE_DIR="firmware"
+
 # Create $(fwabs) from $(CONFIG_EXTRA_FIRMWARE_DIR) -- if it doesn't have a
 # leading /, it's relative to $(srctree).
 fwdir := $(subst $(quote),,$(CONFIG_EXTRA_FIRMWARE_DIR))
 fwabs := $(addprefix $(srctree)/,$(filter-out /%,$(fwdir)))$(filter /%,$(fwdir))
 
-fw-external-y := $(subst $(quote),,$(CONFIG_EXTRA_FIRMWARE))
+fw-external-$(CONFIG_SENSORS_SSP) += sensorhub/shub_nacho_bl.bin
+fw-external-$(CONFIG_SENSORS_SSP_A21S) += sensorhub/shub_nacho_a21s.bin 
+fw-external-$(CONFIG_SENSORS_SSP_A21S) += sensorhub/a21s_bring_up.bin
+
+fw-external-$(CONFIG_TOUCHSCREEN_SYNAPTICS_TCM) += tsp_synaptics/td4150_a21s.bin
+
+fw-external-$(CONFIG_TOUCHSCREEN_HIMAX_CHIPSET) += tsp_himax/hx83112a_a21s.bin
+fw-external-$(CONFIG_TOUCHSCREEN_NT36xxx_HOSTDL_SPI) += tsp_novatek/nt36675_a21s_csot.bin tsp_novatek/nt36675_a21s_mp_csot.bin
 
 quiet_cmd_fwbin = MK_FW   $@
       cmd_fwbin = FWNAME="$(patsubst firmware/%.gen.S,%,$@)";		     \

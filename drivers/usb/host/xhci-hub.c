@@ -945,7 +945,11 @@ static u32 xhci_get_port_status(struct usb_hcd *hcd,
 				slot_id = xhci_find_slot_id_by_port(hcd,
 						xhci, wIndex + 1);
 				if (!slot_id) {
+#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
+					xhci_err(xhci, "slot_id is zero\n");
+#else
 					xhci_dbg(xhci, "slot_id is zero\n");
+#endif
 					return 0xffffffff;
 				}
 				xhci_ring_device(xhci, slot_id);
@@ -1064,8 +1068,13 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 		if (hcd->speed >= HCD_USB3 &&
 				(wLength < USB_DT_SS_HUB_SIZE ||
 				 wValue != (USB_DT_SS_HUB << 8))) {
+#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
+			xhci_err(xhci, "Wrong hub descriptor type for "
+					"USB 3.0 roothub.\n");
+#else
 			xhci_dbg(xhci, "Wrong hub descriptor type for "
 					"USB 3.0 roothub.\n");
+#endif
 			goto error;
 		}
 		xhci_hub_descriptor(hcd, xhci,
@@ -1183,7 +1192,11 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			temp = readl(ports[wIndex]->addr);
 			/* Disable port */
 			if (link_state == USB_SS_PORT_LS_SS_DISABLED) {
+#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
+				xhci_err(xhci, "Disable port %d\n", wIndex);
+#else
 				xhci_dbg(xhci, "Disable port %d\n", wIndex);
+#endif
 				temp = xhci_port_state_to_neutral(temp);
 				/*
 				 * Clear all change bits, so that we get a new
@@ -1199,7 +1212,11 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 
 			/* Put link in RxDetect (enable port) */
 			if (link_state == USB_SS_PORT_LS_RX_DETECT) {
+#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
+				xhci_err(xhci, "Enable port %d\n", wIndex);
+#else
 				xhci_dbg(xhci, "Enable port %d\n", wIndex);
+#endif
 				xhci_set_link_state(xhci, ports[wIndex],
 							link_state);
 				temp = readl(ports[wIndex]->addr);
@@ -1222,7 +1239,11 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			 */
 			if (link_state == USB_SS_PORT_LS_COMP_MOD) {
 				if (!HCC2_CTC(xhci->hcc_params2)) {
+#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
+					xhci_err(xhci, "CTC flag is 0, port already supports entering compliance mode\n");
+#else
 					xhci_dbg(xhci, "CTC flag is 0, port already supports entering compliance mode\n");
+#endif
 					break;
 				}
 
@@ -1382,7 +1403,11 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			slot_id = xhci_find_slot_id_by_port(hcd, xhci,
 					wIndex + 1);
 			if (!slot_id) {
+#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
+				xhci_err(xhci, "slot_id is zero\n");
+#else
 				xhci_dbg(xhci, "slot_id is zero\n");
+#endif
 				goto error;
 			}
 			xhci_ring_device(xhci, slot_id);
@@ -1492,6 +1517,44 @@ int xhci_hub_status_data(struct usb_hcd *hcd, char *buf)
 	return status ? retval : 0;
 }
 
+int xhci_hub_check_speed(struct usb_hcd *hcd)
+{
+	struct xhci_hcd	*xhci;
+	int slot_id, i;
+	enum usb_device_speed speed;
+
+	if (!hcd)
+		return 0;
+
+	if (hcd->speed < HCD_USB3)
+		return 0;
+
+	xhci = hcd_to_xhci(hcd);
+	slot_id = 0;
+	for (i = 0; i < MAX_HC_SLOTS; i++) {
+		if (!xhci->devs[i] || !xhci->devs[i]->udev)
+			continue;
+		speed = xhci->devs[i]->udev->speed;
+		if (speed >= USB_SPEED_SUPER) {
+			return 1;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+int xhci_check_usbl2_support(struct usb_hcd *hcd)
+{
+	struct xhci_hcd	*xhci = hcd_to_xhci(hcd);
+
+	if (xhci->quirks & XHCI_L2_SUPPORT)
+		return true;
+	else
+		return false;
+}
+
+
 #ifdef CONFIG_PM
 
 int xhci_bus_suspend(struct usb_hcd *hcd)
@@ -1504,6 +1567,10 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 	struct xhci_port **ports;
 	u32 portsc_buf[USB_MAXCHILDREN];
 	bool wake_enabled;
+#ifdef CONFIG_USB_DWC3_EXYNOS
+	int is_port_connect = 0;
+	int ret;
+#endif
 
 	rhub = xhci_get_rhub(hcd);
 	ports = rhub->ports;
@@ -1517,7 +1584,11 @@ int xhci_bus_suspend(struct usb_hcd *hcd)
 		if (bus_state->resuming_ports ||	/* USB2 */
 		    bus_state->port_remote_wakeup) {	/* USB3 */
 			spin_unlock_irqrestore(&xhci->lock, flags);
+#ifdef CONFIG_USB_DEBUG_DETAILED_LOG
+			xhci_err(xhci, "suspend failed because a port is resuming\n");
+#else
 			xhci_dbg(xhci, "suspend failed because a port is resuming\n");
+#endif
 			return -EBUSY;
 		}
 	}
@@ -1576,6 +1647,9 @@ retry:
 			if (t1 & PORT_CONNECT) {
 				t2 |= PORT_WKOC_E | PORT_WKDISC_E;
 				t2 &= ~PORT_WKCONN_E;
+#ifdef CONFIG_USB_DWC3_EXYNOS
+				is_port_connect = 1;
+#endif
 			} else {
 				t2 |= PORT_WKOC_E | PORT_WKCONN_E;
 				t2 &= ~PORT_WKDISC_E;
@@ -1613,6 +1687,21 @@ retry:
 		}
 		writel(portsc_buf[port_index], ports[port_index]->addr);
 	}
+
+#ifdef CONFIG_USB_DWC3_EXYNOS
+	if (is_port_connect) {
+		xhci_info(xhci, "port is connected, phy vendor set\n");
+		ret = phy_vendor_set(hcd->phy, 1, 0);
+		if (ret) {
+			xhci_info(xhci, "phy vendor set fail\n");
+			spin_unlock_irqrestore(&xhci->lock, flags);
+			return ret;
+		}
+	}
+
+	xhci_info(xhci, "%s 'HC_STATE_SUSPENDED' portcon: %d main_hcd: %d\n",
+		__func__, is_port_connect, (hcd == xhci->main_hcd));
+#endif
 	hcd->state = HC_STATE_SUSPENDED;
 	bus_state->next_statechange = jiffies + msecs_to_jiffies(10);
 	spin_unlock_irqrestore(&xhci->lock, flags);
@@ -1660,6 +1749,10 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 	struct xhci_hub *rhub;
 	struct xhci_port **ports;
 
+#ifdef CONFIG_USB_DWC3_EXYNOS
+	xhci_info(xhci, "[%s] phy vendor set \n",__func__);
+	phy_vendor_set(hcd->phy, 1, 1);
+#endif
 	rhub = xhci_get_rhub(hcd);
 	ports = rhub->ports;
 	max_ports = rhub->num_ports;
@@ -1759,6 +1852,12 @@ int xhci_bus_resume(struct usb_hcd *hcd)
 	temp = readl(&xhci->op_regs->command);
 
 	spin_unlock_irqrestore(&xhci->lock, flags);
+
+#ifdef CONFIG_USB_DWC3_EXYNOS
+	hcd->state = HC_STATE_RESUMING;
+	xhci_info(xhci, "%s is done, hcd state is 'HC_STATE_RESUMING'\n",__func__);
+#endif
+
 	return 0;
 }
 

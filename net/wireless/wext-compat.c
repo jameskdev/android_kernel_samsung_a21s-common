@@ -22,6 +22,16 @@
 #include "core.h"
 #include "rdev-ops.h"
 
+#ifdef CONFIG_CFG80211_SLSI_WLAN
+int cfg80211_wext_giwname(struct net_device *dev,
+			  struct iw_request_info *info,
+			  union iwreq_data *ireq, char *extra)
+{
+	char *name = (char *)ireq;
+	strcpy(name, "IEEE 802.11");
+	return 0;
+}
+#else
 int cfg80211_wext_giwname(struct net_device *dev,
 			  struct iw_request_info *info,
 			  char *name, char *extra)
@@ -29,6 +39,8 @@ int cfg80211_wext_giwname(struct net_device *dev,
 	strcpy(name, "IEEE 802.11");
 	return 0;
 }
+#endif
+
 EXPORT_WEXT_HANDLER(cfg80211_wext_giwname);
 
 int cfg80211_wext_siwmode(struct net_device *dev, struct iw_request_info *info,

@@ -629,8 +629,12 @@ static void __init map_kernel(pgd_t *pgdp)
  */
 void __init paging_init(void)
 {
-	phys_addr_t pgd_phys = early_pgtable_alloc();
-	pgd_t *pgdp = pgd_set_fixmap(pgd_phys);
+	phys_addr_t pgd_phys;
+	pgd_t *pgdp;
+
+	set_memsize_kernel_type(MEMSIZE_KERNEL_PAGING);
+	pgd_phys = early_pgtable_alloc();
+	pgdp = pgd_set_fixmap(pgd_phys);
 
 	map_kernel(pgdp);
 	map_mem(pgdp);
@@ -657,6 +661,7 @@ void __init paging_init(void)
 	memblock_free(__pa_symbol(swapper_pg_dir) + PAGE_SIZE,
 		      __pa_symbol(swapper_pg_end) - __pa_symbol(swapper_pg_dir)
 		      - PAGE_SIZE);
+	set_memsize_kernel_type(MEMSIZE_KERNEL_OTHERS);
 }
 
 /*
@@ -699,6 +704,187 @@ int kern_addr_valid(unsigned long addr)
 
 	return pfn_valid(pte_pfn(pte));
 }
+
+#ifdef CONFIG_MEMORY_HOTPLUG
+static void free_hotplug_page_range(struct page *page, ssize_t size)
+{
+	WARN_ON(PageReserved(page));
+	free_pages((unsigned long)page_address(page), get_order(size));
+}
+
+static void free_hotplug_pgtable_page(struct page *page)
+{
+	free_hotplug_page_range(page, PAGE_SIZE);
+}
+
+static void free_pte_table(pte_t *ptep, pmd_t *pmdp, unsigned long addr)
+{
+	struct page *page;
+	int i;
+
+	for (i = 0; i < PTRS_PER_PTE; i++) {
+		if (!pte_none(ptep[i]))
+			return;
+	}
+
+	page = pmd_page(READ_ONCE(*pmdp));
+	pmd_clear(pmdp);
+	__flush_tlb_kernel_pgtable(addr);
+	free_hotplug_pgtable_page(page);
+}
+
+static void free_pmd_table(pmd_t *pmdp, pud_t *pudp, unsigned long addr)
+{
+	struct page *page;
+	int i;
+
+	if (CONFIG_PGTABLE_LEVELS <= 2)
+		return;
+
+	for (i = 0; i < PTRS_PER_PMD; i++) {
+		if (!pmd_none(pmdp[i]))
+			return;
+	}
+
+	page = pud_page(READ_ONCE(*pudp));
+	pud_clear(pudp);
+	__flush_tlb_kernel_pgtable(addr);
+	free_hotplug_pgtable_page(page);
+}
+
+static void free_pud_table(pud_t *pudp, pgd_t *pgdp, unsigned long addr)
+{
+	struct page *page;
+	int i;
+
+	if (CONFIG_PGTABLE_LEVELS <= 3)
+		return;
+
+	for (i = 0; i < PTRS_PER_PUD; i++) {
+		if (!pud_none(pudp[i]))
+			return;
+	}
+
+	page = pgd_page(READ_ONCE(*pgdp));
+	pgd_clear(pgdp);
+	__flush_tlb_kernel_pgtable(addr);
+	free_hotplug_pgtable_page(page);
+}
+
+static void
+remove_pte_table(pmd_t *pmdp, unsigned long addr,
+			unsigned long end, bool sparse_vmap)
+{
+	struct page *page;
+	pte_t *ptep, pte;
+	unsigned long start = addr;
+
+	for (; addr < end; addr += PAGE_SIZE) {
+		ptep = pte_offset_kernel(pmdp, addr);
+		pte = READ_ONCE(*ptep);
+
+		if (pte_none(pte))
+			continue;
+
+		WARN_ON(!pte_present(pte));
+		if (sparse_vmap) {
+			page = pte_page(pte);
+			free_hotplug_page_range(page, PAGE_SIZE);
+		}
+		pte_clear(&init_mm, addr, ptep);
+	}
+	flush_tlb_kernel_range(start, end);
+}
+
+static void
+remove_pmd_table(pud_t *pudp, unsigned long addr,
+			unsigned long end, bool sparse_vmap)
+{
+	unsigned long next;
+	struct page *page;
+	pte_t *ptep_base;
+	pmd_t *pmdp, pmd;
+
+	for (; addr < end; addr = next) {
+		next = pmd_addr_end(addr, end);
+		pmdp = pmd_offset(pudp, addr);
+		pmd = READ_ONCE(*pmdp);
+
+		if (pmd_none(pmd))
+			continue;
+
+		WARN_ON(!pmd_present(pmd));
+		if (pmd_sect(pmd)) {
+			if (sparse_vmap) {
+				page = pmd_page(pmd);
+				free_hotplug_page_range(page, PMD_SIZE);
+			}
+			pmd_clear(pmdp);
+			continue;
+		}
+		ptep_base = pte_offset_kernel(pmdp, 0UL);
+		remove_pte_table(pmdp, addr, next, sparse_vmap);
+		free_pte_table(ptep_base, pmdp, addr);
+	}
+}
+
+static void
+remove_pud_table(pgd_t *pgdp, unsigned long addr,
+			unsigned long end, bool sparse_vmap)
+{
+	unsigned long next;
+	struct page *page;
+	pmd_t *pmdp_base;
+	pud_t *pudp, pud;
+
+	for (; addr < end; addr = next) {
+		next = pud_addr_end(addr, end);
+		pudp = pud_offset(pgdp, addr);
+		pud = READ_ONCE(*pudp);
+
+		if (pud_none(pud))
+			continue;
+
+		WARN_ON(!pud_present(pud));
+		if (pud_sect(pud)) {
+			if (sparse_vmap) {
+				page = pud_page(pud);
+				free_hotplug_page_range(page, PUD_SIZE);
+			}
+			pud_clear(pudp);
+			continue;
+		}
+		pmdp_base = pmd_offset(pudp, 0UL);
+		remove_pmd_table(pudp, addr, next, sparse_vmap);
+		free_pmd_table(pmdp_base, pudp, addr);
+	}
+}
+
+static void
+remove_pagetable(unsigned long start, unsigned long end, bool sparse_vmap)
+{
+	unsigned long addr, next;
+	pud_t *pudp_base;
+	pgd_t *pgdp, pgd;
+
+	spin_lock(&init_mm.page_table_lock);
+	for (addr = start; addr < end; addr = next) {
+		next = pgd_addr_end(addr, end);
+		pgdp = pgd_offset_k(addr);
+		pgd = READ_ONCE(*pgdp);
+
+		if (pgd_none(pgd))
+			continue;
+
+		WARN_ON(!pgd_present(pgd));
+		pudp_base = pud_offset(pgdp, 0UL);
+		remove_pud_table(pgdp, addr, next, sparse_vmap);
+		free_pud_table(pudp_base, pgdp, addr);
+	}
+	spin_unlock(&init_mm.page_table_lock);
+}
+#endif
+
 #ifdef CONFIG_SPARSEMEM_VMEMMAP
 #if !ARM64_SWAPPER_USES_SECTION_MAPS
 int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node,
@@ -746,6 +932,9 @@ int __meminit vmemmap_populate(unsigned long start, unsigned long end, int node,
 void vmemmap_free(unsigned long start, unsigned long end,
 		struct vmem_altmap *altmap)
 {
+#ifdef CONFIG_MEMORY_HOTPLUG
+	remove_pagetable(start, end, true);
+#endif
 }
 #endif	/* CONFIG_SPARSEMEM_VMEMMAP */
 
@@ -1033,3 +1222,44 @@ int pud_free_pmd_page(pud_t *pudp, unsigned long addr)
 	pmd_free(NULL, table);
 	return 1;
 }
+
+#ifdef CONFIG_MEMORY_HOTPLUG
+static void __remove_pgd_mapping(pgd_t *pgdir, unsigned long start, u64 size)
+{
+	WARN_ON(pgdir != init_mm.pgd);
+	remove_pagetable(start, start + size, false);
+}
+
+int arch_add_memory(int nid, u64 start, u64 size, struct vmem_altmap *altmap,
+		    bool want_memblock)
+{
+	int ret, flags = 0;
+
+	if (debug_pagealloc_enabled())
+		flags = NO_BLOCK_MAPPINGS | NO_CONT_MAPPINGS;
+
+	__create_pgd_mapping(swapper_pg_dir, start, __phys_to_virt(start),
+			     size, PAGE_KERNEL, pgd_pgtable_alloc, flags);
+
+	ret = __add_pages(nid, start >> PAGE_SHIFT, size >> PAGE_SHIFT,
+			   altmap, want_memblock);
+	if (ret)
+		__remove_pgd_mapping(swapper_pg_dir,
+				     __phys_to_virt(start), size);
+	return ret;
+}
+
+#ifdef CONFIG_MEMORY_HOTREMOVE
+int arch_remove_memory(u64 start, u64 size, struct vmem_altmap *altmap)
+{
+	unsigned long start_pfn = start >> PAGE_SHIFT;
+	unsigned long nr_pages = size >> PAGE_SHIFT;
+	struct zone *zone = page_zone(pfn_to_page(start_pfn));
+
+	__remove_pages(zone, start_pfn, nr_pages, altmap);
+	__remove_pgd_mapping(swapper_pg_dir, __phys_to_virt(start), size);
+
+	return 0;
+}
+#endif
+#endif

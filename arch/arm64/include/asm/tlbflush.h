@@ -228,4 +228,14 @@ static inline void __flush_tlb_kernel_pgtable(unsigned long kaddr)
 }
 #endif
 
+#ifdef CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH
+/*
+ * we have no filed in arch_tlbflush_unmap_batch. Therefore we have nothing to
+ * do in arch_tlbbatch_add_mm().
+ */
+#define arch_tlbbatch_add_mm(batch, mm) do { } while (0)
+#define arch_tlbbatch_flush(batch)  flush_tlb_all()
+
+#endif /* CONFIG_ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH */
+
 #endif

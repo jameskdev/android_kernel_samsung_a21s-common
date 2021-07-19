@@ -74,6 +74,11 @@ config TYPEC_RT1711H
 
 source "drivers/usb/typec/fusb302/Kconfig"
 
+config TYPEC_DEFAULT
+	bool "TYPEC for Default Setting"
+	help
+	  Select this when you want to use TYPEC in USB not CCIC.
+
 config TYPEC_WCOVE
 	tristate "Intel WhiskeyCove PMIC USB Type-C PHY driver"
 	depends on ACPI

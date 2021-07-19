@@ -54,7 +54,7 @@ int dw_mci_pltfm_register(struct platform_device *pdev,
 	host->phy_regs = regs->start;
 
 	platform_set_drvdata(pdev, host);
-	return dw_mci_probe(host);
+	return dw_mci_probe(host, pdev);
 }
 EXPORT_SYMBOL_GPL(dw_mci_pltfm_register);
 

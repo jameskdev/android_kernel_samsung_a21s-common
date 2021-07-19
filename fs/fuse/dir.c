@@ -281,10 +281,65 @@ static void fuse_dentry_release(struct dentry *dentry)
 	kfree_rcu(fd, rcu);
 }
 
+/*
+ * Get the canonical path. Since we must translate to a path, this must be done
+ * in the context of the userspace daemon, however, the userspace daemon cannot
+ * look up paths on its own. Instead, we handle the lookup as a special case
+ * inside of the write request.
+ */
+static void fuse_dentry_canonical_path(const struct path *path,
+				       struct path *canonical_path)
+{
+	struct inode *inode = d_inode(path->dentry);
+	struct fuse_conn *fc = get_fuse_conn(inode);
+	FUSE_ARGS(args);
+	char *path_name;
+	int err;
+
+	path_name = (char *)__get_free_page(GFP_KERNEL);
+	if (!path_name)
+		goto default_path;
+
+	args.in.h.opcode = FUSE_CANONICAL_PATH;
+	args.in.h.nodeid = get_node_id(inode);
+	args.in.numargs = 0;
+	args.out.numargs = 1;
+	args.out.args[0].size = PATH_MAX;
+	args.out.args[0].value = path_name;
+	args.out.argvar = 1;
+	args.out.canonical_path = canonical_path;
+
+	err = fuse_simple_request(fc, &args);
+	free_page((unsigned long)path_name);
+	if (err > 0)
+		return;
+default_path:
+	canonical_path->dentry = path->dentry;
+	canonical_path->mnt = path->mnt;
+	path_get(canonical_path);
+}
+
+/* @fs.sec -- 63ff82f9216c9b6d003e7d45699d54b833344719 -- */
+static int fuse_dentry_delete(const struct dentry *dentry)
+{
+	struct fuse_inode *fi;
+
+	if (d_really_is_negative(dentry))
+		return 0;
+
+	fi = get_fuse_inode(d_inode(dentry));
+	if (test_bit(FUSE_I_ATTR_FORCE_SYNC, &fi->state))
+		return 1;
+
+	return 0;
+}
+
 const struct dentry_operations fuse_dentry_operations = {
 	.d_revalidate	= fuse_dentry_revalidate,
+	.d_delete	= fuse_dentry_delete,
 	.d_init		= fuse_dentry_init,
 	.d_release	= fuse_dentry_release,
+	.d_canonical_path = fuse_dentry_canonical_path,
 };
 
 const struct dentry_operations fuse_root_dentry_operations = {
@@ -952,6 +1007,8 @@ static int fuse_update_get_attr(struct inode *inode, struct file *file,
 		sync = true;
 	else if (flags & AT_STATX_DONT_SYNC)
 		sync = false;
+	else if (test_bit(FUSE_I_ATTR_FORCE_SYNC, &fi->state))
+		sync = true;
 	else
 		sync = time_before64(fi->i_time, get_jiffies_64());
 
@@ -1135,7 +1192,8 @@ static int fuse_permission(struct inode *inode, int mask)
 	    ((mask & MAY_EXEC) && S_ISREG(inode->i_mode))) {
 		struct fuse_inode *fi = get_fuse_inode(inode);
 
-		if (time_before64(fi->i_time, get_jiffies_64())) {
+		if (time_before64(fi->i_time, get_jiffies_64()) ||
+		    test_bit(FUSE_I_ATTR_FORCE_SYNC, &fi->state)) {
 			refreshed = true;
 
 			err = fuse_perm_getattr(inode, mask);
@@ -1553,7 +1611,7 @@ void fuse_set_nowrite(struct inode *inode)
 	BUG_ON(fi->writectr < 0);
 	fi->writectr += FUSE_NOWRITE;
 	spin_unlock(&fc->lock);
-	wait_event(fi->page_waitq, fi->writectr == FUSE_NOWRITE);
+	fuse_wait_event(fi->page_waitq, fi->writectr == FUSE_NOWRITE);
 }
 
 /*

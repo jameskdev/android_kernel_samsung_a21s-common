@@ -5623,7 +5623,7 @@ static int selinux_nlmsg_perm(struct sock *sk, struct sk_buff *skb)
 				return rc;
 		} else if (rc == -EINVAL) {
 			/* -EINVAL is a missing msg/perm mapping */
-			pr_warn_ratelimited("SELinux: unrecognized netlink"
+ 			pr_warn_ratelimited("SELinux: unrecognized netlink"
 				" message: protocol=%hu nlmsg_type=%hu sclass=%s"
 				" pid=%d comm=%s\n",
 				sk->sk_protocol, nlh->nlmsg_type,
@@ -5638,16 +5638,16 @@ static int selinux_nlmsg_perm(struct sock *sk, struct sk_buff *skb)
 			rc = 0;
 		} else {
 			return rc;
-		}
-
+ 		}
+ 
 		/* move to the next message after applying netlink padding */
 		msg_len = NLMSG_ALIGN(nlh->nlmsg_len);
 		if (msg_len >= data_len)
 			return 0;
 		data_len -= msg_len;
 		data += msg_len;
-	}
-
+ 	}
+ 
 	return rc;
 }
 

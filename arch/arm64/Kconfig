@@ -63,13 +63,14 @@ config ARM64
 	select ARCH_SUPPORTS_NUMA_BALANCING
 	select ARCH_WANT_COMPAT_IPC_PARSE_VERSION
 	select ARCH_WANT_FRAME_POINTERS
+	select ARCH_WANT_BATCHED_UNMAP_TLB_FLUSH if SMP
 	select ARCH_HAS_UBSAN_SANITIZE_ALL
 	select ARM_AMBA
 	select ARM_ARCH_TIMER
 	select ARM_GIC
 	select AUDIT_ARCH_COMPAT_GENERIC
 	select ARM_GIC_V2M if PCI
-	select ARM_GIC_V3
+	select ARM_GIC_V3 if !ARCH_EXYNOS
 	select ARM_GIC_V3_ITS if PCI
 	select ARM_PSCI_FW
 	select BUILDTIME_EXTABLE_SORT
@@ -257,6 +258,12 @@ config ZONE_DMA32
 	default y
 
 config HAVE_GENERIC_GUP
+	def_bool y
+
+config ARCH_ENABLE_MEMORY_HOTPLUG
+	def_bool y
+
+config ARCH_ENABLE_MEMORY_HOTREMOVE
 	def_bool y
 
 config SMP
@@ -928,7 +935,7 @@ config FORCE_MAX_ZONEORDER
 
 config UNMAP_KERNEL_AT_EL0
 	bool "Unmap kernel when running in userspace (aka \"KAISER\")" if EXPERT
-	default y
+	default n
 	help
 	  Speculation attacks against some high-performance processors can
 	  be used to bypass MMU permission checks and leak kernel data to
@@ -940,7 +947,7 @@ config UNMAP_KERNEL_AT_EL0
 
 config HARDEN_BRANCH_PREDICTOR
 	bool "Harden the branch predictor against aliasing attacks" if EXPERT
-	default y
+	default n
 	help
 	  Speculation attacks against some high-performance processors rely on
 	  being able to manipulate the branch predictor for a victim context by

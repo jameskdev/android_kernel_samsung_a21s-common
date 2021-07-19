@@ -136,6 +136,9 @@ void *hcd_buffer_alloc(
 		return kmalloc(size, mem_flags);
 	}
 
+#ifdef CONFIG_USB_XHCI_ALLOC_FROM_DMA_POOL
+	mem_flags &= ~(__GFP_DIRECT_RECLAIM);
+#endif
 	for (i = 0; i < HCD_BUFFER_POOLS; i++) {
 		if (size <= pool_max[i])
 			return dma_pool_alloc(hcd->pool[i], mem_flags, dma);

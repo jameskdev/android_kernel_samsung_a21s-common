@@ -7,6 +7,14 @@ mainmenu "Linux/$(ARCH) $(KERNELVERSION) Kernel Configuration"
 
 comment "Compiler: $(CC_VERSION_TEXT)"
 
+config ANDROID_VERSION
+	string
+	option env="ANDROID_VERSION"
+
+config ANDROID_MAJOR_VERSION
+	string
+	option env="ANDROID_MAJOR_VERSION"
+
 source "scripts/Kconfig.include"
 
 source "init/Kconfig"

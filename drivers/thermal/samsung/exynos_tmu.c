@@ -34,7 +34,7 @@
 #include <linux/of_irq.h>
 #include <linux/platform_device.h>
 #include <linux/regulator/consumer.h>
-
+#include <linux/debug-snapshot.h>
 #include <dt-bindings/thermal/thermal_exynos.h>
 
 #include "../thermal_core.h"
@@ -690,6 +690,36 @@ static int exynos_get_temp(void *p, int *temp)
 	return ret;
 }
 
+#ifdef CONFIG_SEC_BOOTSTAT
+void sec_bootstat_get_thermal(int *temp)
+{
+	struct exynos_tmu_data *data;
+
+	list_for_each_entry(data, &dtm_dev_list, node) {
+		if (!strncasecmp(data->tmu_name, "BIG", THERMAL_NAME_LENGTH)) {
+			exynos_get_temp(data, &temp[0]);
+			temp[0] /= 1000;
+		} else if (!strncasecmp(data->tmu_name, "LITTLE", THERMAL_NAME_LENGTH)) {
+			exynos_get_temp(data, &temp[1]);
+			temp[1] /= 1000;
+		} else if (!strncasecmp(data->tmu_name, "G3D", THERMAL_NAME_LENGTH)) {
+			exynos_get_temp(data, &temp[2]);
+			temp[2] /= 1000;
+		} else if (!strncasecmp(data->tmu_name, "NPU", THERMAL_NAME_LENGTH)) {
+			exynos_get_temp(data, &temp[3]);
+			temp[3] /= 1000;
+		} else if (!strncasecmp(data->tmu_name, "CP", THERMAL_NAME_LENGTH)) {
+			exynos_get_temp(data, &temp[4]);
+			temp[4] /= 1000;
+		} else if (!strncasecmp(data->tmu_name, "ISP", THERMAL_NAME_LENGTH)) {
+			exynos_get_temp(data, &temp[5]);
+			temp[5] /= 1000;
+		} else
+			continue;
+	}
+}
+#endif
+
 #ifdef CONFIG_THERMAL_EMULATION
 static u32 get_emul_con_reg(struct exynos_tmu_data *data, unsigned int val,
 			    int temp)
@@ -1123,6 +1153,10 @@ static int exynos_tmu_probe(struct platform_device *pdev)
 	}
 
 	exynos_tmu_control(pdev, true);
+
+	if (!IS_ERR(data->tzd))
+		data->tzd->ops->set_mode(data->tzd, THERMAL_DEVICE_ENABLED);
+
 	return 0;
 
 err_thermal:

@@ -540,6 +540,9 @@ int __cgroup_bpf_run_filter_skb(struct sock *sk,
 				 bpf_prog_run_save_cb);
 	__skb_pull(skb, offset);
 	skb->sk = save_sk;
+
+	if (ret != 1)
+		DROPDUMP_QPCAP_SKB(skb, NET_DROPDUMP_OPT_IP_BPF);
 	return ret == 1 ? 0 : -EPERM;
 }
 EXPORT_SYMBOL(__cgroup_bpf_run_filter_skb);

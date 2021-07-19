@@ -89,6 +89,7 @@ struct disk_stats {
 	unsigned long merges[NR_STAT_GROUPS];
 	unsigned long io_ticks;
 	unsigned long time_in_queue;
+	unsigned long flush_ios;
 };
 
 #define PARTITION_META_INFO_VOLNAMELTH	64
@@ -143,6 +144,10 @@ struct hd_struct {
 #define GENHD_FL_BLOCK_EVENTS_ON_EXCL_WRITE	256
 #define GENHD_FL_NO_PART_SCAN			512
 #define GENHD_FL_HIDDEN				1024
+#ifdef CONFIG_USB_STORAGE_DETECT
+#define GENHD_FL_MEDIA_PRESENT			2048
+#define GENHD_FL_IF_USB				4096
+#endif
 
 enum {
 	DISK_EVENT_MEDIA_CHANGE			= 1 << 0, /* media changed */
@@ -170,6 +175,12 @@ struct blk_integrity {
 };
 
 #endif	/* CONFIG_BLK_DEV_INTEGRITY */
+
+struct accumulated_io_stats {
+	struct timespec uptime;
+	unsigned long sectors[3];	/* READ, WRITE, DISCARD */
+	unsigned long ios[3];
+};
 
 struct gendisk {
 	/* major, first_minor and minors are input parameters only,
@@ -205,6 +216,7 @@ struct gendisk {
 	struct timer_rand_state *random;
 	atomic_t sync_io;		/* RAID */
 	struct disk_events *ev;
+	struct accumulated_io_stats accios;
 #ifdef  CONFIG_BLK_DEV_INTEGRITY
 	struct kobject integrity_kobj;
 #endif	/* CONFIG_BLK_DEV_INTEGRITY */

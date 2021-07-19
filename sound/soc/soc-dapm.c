@@ -1233,6 +1233,18 @@ static int is_connected_input_ep(struct snd_soc_dapm_widget *widget,
 			is_connected_input_ep, custom_stop_condition);
 }
 
+int snd_soc_dapm_connected_output_ep(struct snd_soc_dapm_widget *widget,
+	struct list_head *list)
+{
+	return is_connected_output_ep(widget, list, NULL);
+}
+
+int snd_soc_dapm_connected_input_ep(struct snd_soc_dapm_widget *widget,
+	struct list_head *list)
+{
+	return is_connected_input_ep(widget, list, NULL);
+}
+
 /**
  * snd_soc_dapm_get_connected_widgets - query audio path and it's widgets.
  * @dai: the soc DAI.
@@ -1607,6 +1619,9 @@ static void dapm_seq_run(struct snd_soc_card *card,
 
 	list_for_each_entry_safe(w, n, list, power_list) {
 		ret = 0;
+
+		dev_info(w->dapm->dev, "dapm powering %s widget %s\n",
+				power_up ? "up" : "down", w->name);
 
 		/* Do we need to apply any queued changes? */
 		if (sort[w->id] != cur_sort || w->reg != cur_reg ||
@@ -1997,7 +2012,7 @@ static int dapm_power_widgets(struct snd_soc_card *card, int event)
 	dapm_pre_sequence_async(&card->dapm, 0);
 	/* Run other bias changes in parallel */
 	list_for_each_entry(d, &card->dapm_list, list) {
-		if (d != &card->dapm)
+		if (d != &card->dapm && d->bias_level != d->target_bias_level)
 			async_schedule_domain(dapm_pre_sequence_async, d,
 						&async_domain);
 	}
@@ -2021,7 +2036,7 @@ static int dapm_power_widgets(struct snd_soc_card *card, int event)
 
 	/* Run all the bias changes in parallel */
 	list_for_each_entry(d, &card->dapm_list, list) {
-		if (d != &card->dapm)
+		if (d != &card->dapm && d->bias_level != d->target_bias_level)
 			async_schedule_domain(dapm_post_sequence_async, d,
 						&async_domain);
 	}

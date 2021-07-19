@@ -645,4 +645,105 @@ config CHARGER_CROS_USBPD
 	  what is connected to USB PD ports from the EC and converts
 	  that into power_supply properties.
 
+config FUELGAUGE_S2MU004
+	tristate "s2mu004 fuel gauge driver"
+	default n
+	depends on (MFD_S2MU004) && I2C
+	help
+	  say y to include support for s.lsi s2mu004 fuel gauge driver.
+
+config CHARGER_S2MU004
+	tristate "S2MU004 charger support"
+	depends on (MFD_S2MU004) && I2C
+	help
+	  Say Y here to enable support for the S2MU004 charger
+	  S2MU004 incluse pmic, led driver.
+	  You have to define MFD_S2MU004
+
+config BATTERY_S2MU00X
+	tristate "S2MU00x battery driver"
+	depends on I2C
+	help
+	  Say Y here to enable support for S2MU00x battery driver.
+
+config FUELGAUGE_S2MU106
+    tristate "S2MU106 fuelgauge driver"
+    default n
+    depends on I2C
+    help
+      say y to include support
+      for s.lsi S2MU106 fuelgauge driver.
+
+config CHARGER_S2MU106
+    tristate "S2MU106 charger support"
+    depends on (MFD_S2MU106) && I2C
+    help
+      Say Y here to enable support for the S2MU106 charger
+      S2MU106 incluse pmic, led driver.
+      You have to define MFD_S2MU106
+
+config CHARGER_S2MU107
+    tristate "S2MU107 charger support"
+    depends on (MFD_S2MU107) && I2C
+    help
+      Say Y here to enable support for the S2MU107 charger
+      S2MU107 incluse pmic, led driver.
+      You have to define MFD_S2MU107
+
+config PM_S2MU106
+	tristate "S2MU106 power meter support"
+	depends on (MFD_S2MU106) && I2C
+	help
+	 Say Y here to enable support for the S2MU106 power meter.
+	 S2MU106 power meter is dependent on MFD_S2MU106
+	 so it needs to be defined.
+
+config PM_S2MU107
+	tristate "S2MU107 power meter support"
+	depends on (MFD_S2MU107) && I2C
+	help
+	 Say Y here to enable support for the S2MU107 power meter.
+	 S2MU107 power meter is dependent on MFD_S2MU107
+	 so it needs to be defined.
+
+config MANAGER_S2M_CHARGER
+	tristate "S2M_CHG_MANAGER battery driver"
+	help
+	  Say Y here to enable support for S2MXXXX charging manager driver.
+	  This charging manager driver supports only the basic functions.
+
+config FUELGAUGE_S2MU107
+	tristate "S2MU107 fuel gauge driver"
+	default n
+	depends on I2C
+	help
+	 Say Y to include support
+	 for S.LSI S2MU107 fuel gauge driver.
+	 Ths fuel-gauge supports current tracking and
+	 voltage tracking to model the battery SOC.
+
+config FUELGAUGE_S2MU107_TEMP_COMPEN
+	tristate "S2MU107 fuel gauge temperature compensation"
+	default n
+	depends on (FUELGAUGE_S2MU107) && I2C
+	help
+	 Say Y to enable temperature compensation
+	 for S.LSI S2MU107 fuel gauge driver.
+
+config FUELGAUGE_S2MU107_BATCAP_LRN
+	tristate "S2MU107 fuel gauge battery capacity learning"
+	default n
+	depends on (FUELGAUGE_S2MU107) && I2C
+	help
+	 Say Y to enable battery capacity learning
+	 for S.LSI S2MU107 fuel gauge driver.
+
+config FUELGAUGE_S2MU107_USE_10MILLIOHM
+	tristate "S2MU107 fuel gauge with 10mohm resistor"
+	default n
+	depends on (FUELGAUGE_S2MU107) && I2C
+	help
+	 Say Y to use 10mohm current sensing resistor
+	 instead of 5mohm for S.LSI S2MU107 fuel gauge.
+
 endif # POWER_SUPPLY

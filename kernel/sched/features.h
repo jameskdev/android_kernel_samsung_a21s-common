@@ -78,7 +78,7 @@ SCHED_FEAT(WARN_DOUBLE_CLOCK, false)
 SCHED_FEAT(RT_PUSH_IPI, true)
 #endif
 
-SCHED_FEAT(RT_RUNTIME_SHARE, true)
+SCHED_FEAT(RT_RUNTIME_SHARE, false)
 SCHED_FEAT(LB_MIN, false)
 SCHED_FEAT(ATTACH_AGE_LOAD, true)
 
@@ -109,6 +109,17 @@ SCHED_FEAT(EAS_PREFER_IDLE, true)
  * Request max frequency from schedutil whenever a RT task is running.
  */
 SCHED_FEAT(SUGOV_RT_MAX_FREQ, false)
+
+/*
+ * Exynos Mobile Scheduler
+ */
+SCHED_FEAT(EMS, true)
+
+#ifdef CONFIG_SCHED_USE_FLUID_RT
+SCHED_FEAT(EXYNOS_FRT, true)
+#else
+SCHED_FEAT(EXYNOS_FRT, false)
+#endif
 
 /*
  * Apply schedtune boost hold to tasks of all sched classes.

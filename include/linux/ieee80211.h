@@ -3246,5 +3246,4 @@ static inline bool for_each_element_completed(const struct element *element,
 {
 	return (const u8 *)element == (const u8 *)data + datalen;
 }
-
 #endif /* LINUX_IEEE80211_H */

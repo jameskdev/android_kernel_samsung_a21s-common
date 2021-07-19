@@ -26,5 +26,6 @@ void log_suspend_abort_reason(const char *fmt, ...);
 #else
 static inline void log_suspend_abort_reason(const char *fmt, ...) { }
 #endif
+void log_wakeup_reason_name(const char *name);
 
 #endif /* _LINUX_WAKEUP_REASON_H */

@@ -96,6 +96,7 @@ obj-$(CONFIG_GPIO_MXS)		+= gpio-mxs.o
 obj-$(CONFIG_GPIO_OCTEON)	+= gpio-octeon.o
 obj-$(CONFIG_GPIO_OMAP)		+= gpio-omap.o
 obj-$(CONFIG_GPIO_PCA953X)	+= gpio-pca953x.o
+obj-$(CONFIG_GPIO_PCAL6524)	+= gpio-pcal6524.o
 obj-$(CONFIG_GPIO_PCF857X)	+= gpio-pcf857x.o
 obj-$(CONFIG_GPIO_PCH)		+= gpio-pch.o
 obj-$(CONFIG_GPIO_PCI_IDIO_16)	+= gpio-pci-idio-16.o
@@ -159,3 +160,8 @@ obj-$(CONFIG_GPIO_ZEVIO)	+= gpio-zevio.o
 obj-$(CONFIG_GPIO_ZYNQ)		+= gpio-zynq.o
 obj-$(CONFIG_GPIO_ZX)		+= gpio-zx.o
 obj-$(CONFIG_GPIO_LOONGSON1)	+= gpio-loongson1.o
+
+CFLAGS_sec_detect_conn.o	+= -Wformat
+
+# Samsung Connector Check Feature
+obj-$(CONFIG_SEC_DETECT_CONN)	+= sec_detect_conn.o

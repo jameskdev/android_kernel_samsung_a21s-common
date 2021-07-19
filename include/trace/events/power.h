@@ -40,6 +40,50 @@ DEFINE_EVENT(cpu, cpu_idle,
 	TP_ARGS(state, cpu_id)
 );
 
+TRACE_EVENT(exynos_slack_func,
+
+	TP_PROTO(int cpu),
+
+	TP_ARGS(cpu),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+	),
+
+	TP_printk("cpu=%d SLACK EXPIRED", __entry->cpu)
+);
+
+TRACE_EVENT(exynos_slack,
+
+	TP_PROTO(int cpu, unsigned long util,
+		unsigned long min, unsigned long action, int ret),
+
+	TP_ARGS(cpu, util, min, action, ret),
+
+	TP_STRUCT__entry(
+		__field(int, cpu)
+		__field(unsigned long, util)
+		__field(unsigned long, min)
+		__field(unsigned long, action)
+		__field(int, ret)
+	),
+
+	TP_fast_assign(
+		__entry->cpu = cpu;
+		__entry->util = util;
+		__entry->min = min;
+		__entry->action = action;
+		__entry->ret = ret;
+	),
+
+	TP_printk("cpu=%d util=%ld min=%ld action=%ld ret=%d", __entry->cpu,
+			__entry->util, __entry->min, __entry->action, __entry->ret)
+);
+
 TRACE_EVENT(powernv_throttle,
 
 	TP_PROTO(int chip_id, const char *reason, int pmax),
@@ -529,6 +573,28 @@ DEFINE_EVENT(dev_pm_qos_request, dev_pm_qos_remove_request,
 
 	TP_ARGS(name, type, new_value)
 );
+
+TRACE_EVENT(ocp_max_limit,
+
+	TP_PROTO(unsigned int clipped_freq, bool start),
+
+	TP_ARGS(clipped_freq, start),
+
+	TP_STRUCT__entry(
+		__field(        u32,            clipped_freq    )
+		__field(        bool,           start   )
+	),
+
+	TP_fast_assign(
+		__entry->clipped_freq = clipped_freq;
+		__entry->start = start;
+	),
+
+	TP_printk("clipped_freq=%lu %s",
+			(unsigned long)__entry->clipped_freq,
+			(__entry->start)?"begin":"end")
+);
+
 #endif /* _TRACE_POWER_H */
 
 /* This part must be outside protection */

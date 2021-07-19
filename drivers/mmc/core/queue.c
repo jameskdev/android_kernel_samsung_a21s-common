@@ -201,7 +201,12 @@ static int __mmc_init_request(struct mmc_queue *mq, struct request *req,
 {
 	struct mmc_queue_req *mq_rq = req_to_mmc_queue_req(req);
 	struct mmc_card *card = mq->card;
-	struct mmc_host *host = card->host;
+	struct mmc_host *host;
+
+	if (!mq || !card || (mmc_card_removed(card)))
+		return -ENOTBLK;
+
+	host = card->host;
 
 	mq_rq->sg = mmc_alloc_sg(host->max_segs, gfp);
 	if (!mq_rq->sg)
@@ -268,6 +273,10 @@ static blk_status_t mmc_mq_queue_rq(struct blk_mq_hw_ctx *hctx,
 		}
 		break;
 	case MMC_ISSUE_ASYNC:
+		if (mmc_cqe_dcmd_busy(mq)) {
+			spin_unlock_irq(q->queue_lock);
+			return BLK_STS_RESOURCE;
+		}
 		break;
 	default:
 		/*
@@ -438,7 +447,7 @@ static int mmc_mq_init(struct mmc_queue *mq, struct mmc_card *card,
 	if (ret)
 		return ret;
 
-	blk_queue_rq_timeout(mq->queue, 60 * HZ);
+	blk_queue_rq_timeout(mq->queue, 20 * HZ);
 
 	mmc_setup_queue(mq, card);
 

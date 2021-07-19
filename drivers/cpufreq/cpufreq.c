@@ -1026,10 +1026,19 @@ static int cpufreq_add_dev_interface(struct cpufreq_policy *policy)
 
 	return 0;
 }
+__weak unsigned long cpufreq_governor_get_util(unsigned int cpu)
+{
+	return 0;
+}
 
 __weak struct cpufreq_governor *cpufreq_default_governor(void)
 {
 	return NULL;
+}
+
+__weak unsigned int cpufreq_governor_get_freq(int cpu)
+{
+	return 0;
 }
 
 static int cpufreq_init_policy(struct cpufreq_policy *policy)
@@ -1975,7 +1984,7 @@ int __cpufreq_driver_target(struct cpufreq_policy *policy,
 	unsigned int old_target_freq = target_freq;
 	int index;
 
-	if (cpufreq_disabled())
+	if (cpufreq_disabled() || !policy->freq_table)
 		return -ENODEV;
 
 	/* Make sure that target_freq is within supported range */

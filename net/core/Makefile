@@ -32,3 +32,5 @@ obj-$(CONFIG_HWBM) += hwbm.o
 obj-$(CONFIG_NET_DEVLINK) += devlink.o
 obj-$(CONFIG_GRO_CELLS) += gro_cells.o
 obj-$(CONFIG_FAILOVER) += failover.o
+obj-$(CONFIG_NET_SUPPORT_DROPDUMP) += drop_dump.o
+obj-$(CONFIG_NET_ANALYTICS) += analytics_logger.o

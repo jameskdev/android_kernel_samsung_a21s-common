@@ -622,8 +622,9 @@ static int mmc_decode_ext_csd(struct mmc_card *card, u8 *ext_csd)
 
 	/* eMMC v5 or later */
 	if (card->ext_csd.rev >= 7) {
-		memcpy(card->ext_csd.fwrev, &ext_csd[EXT_CSD_FIRMWARE_VERSION],
-		       MMC_FIRMWARE_LEN);
+		for (idx = 0 ; idx < MMC_FIRMWARE_LEN ; idx++)
+			card->ext_csd.fwrev[idx] = ext_csd[EXT_CSD_FIRMWARE_VERSION + MMC_FIRMWARE_LEN - 1 - idx];
+
 		card->ext_csd.ffu_capable =
 			(ext_csd[EXT_CSD_SUPPORTED_MODE] & 0x1) &&
 			!(ext_csd[EXT_CSD_FW_CONFIG] & 0x1);
@@ -767,6 +768,43 @@ static int mmc_compare_ext_csds(struct mmc_card *card, unsigned bus_width)
 	return err;
 }
 
+static ssize_t mmc_gen_unique_number_show(struct device *dev,
+			      struct device_attribute *attr,
+			      char *buf)
+{
+	struct mmc_card *card = mmc_dev_to_card(dev);
+	char gen_pnm[3];
+	int i;
+
+	switch (card->cid.manfid) {
+		case 0x02:	/* Sandisk	-> [3][4] */
+		case 0x45:
+			sprintf(gen_pnm, "%.*s", 2, card->cid.prod_name + 3);
+			break;
+		case 0x11:	/* Toshiba	-> [1][2] */
+		case 0x90:	/* Hynix */
+			sprintf(gen_pnm, "%.*s", 2, card->cid.prod_name + 1);
+			break;
+		case 0x13:
+		case 0xFE:	/* Micron 	-> [4][5] */
+			sprintf(gen_pnm, "%.*s", 2, card->cid.prod_name + 4);
+			break;
+		case 0x15:	/* Samsung 	-> [0][1] */
+		default:
+			sprintf(gen_pnm, "%.*s", 2, card->cid.prod_name + 0);
+			break;
+	}
+	/* Convert to Captal */
+	for (i = 0 ; i < 2 ; i++)
+	{
+		if (gen_pnm[i] >= 'a' && gen_pnm[i] <= 'z')
+			gen_pnm[i] -= ('a' - 'A');
+	}
+	return sprintf(buf, "C%s%02X%08X%02X\n",
+			gen_pnm, card->cid.prv, card->cid.serial, UNSTUFF_BITS(card->raw_cid, 8, 8));
+}
+
+
 MMC_DEV_ATTR(cid, "%08x%08x%08x%08x\n", card->raw_cid[0], card->raw_cid[1],
 	card->raw_cid[2], card->raw_cid[3]);
 MMC_DEV_ATTR(csd, "%08x%08x%08x%08x\n", card->raw_csd[0], card->raw_csd[1],
@@ -794,6 +832,8 @@ MMC_DEV_ATTR(rel_sectors, "%#x\n", card->ext_csd.rel_sectors);
 MMC_DEV_ATTR(ocr, "0x%08x\n", card->ocr);
 MMC_DEV_ATTR(rca, "0x%04x\n", card->rca);
 MMC_DEV_ATTR(cmdq_en, "%d\n", card->ext_csd.cmdq_en);
+MMC_DEV_ATTR(caps, "0x%08x\n", card->host->caps);
+MMC_DEV_ATTR(caps2, "0x%08x\n", card->host->caps2);
 
 static ssize_t mmc_fwrev_show(struct device *dev,
 			      struct device_attribute *attr,
@@ -810,6 +850,7 @@ static ssize_t mmc_fwrev_show(struct device *dev,
 }
 
 static DEVICE_ATTR(fwrev, S_IRUGO, mmc_fwrev_show, NULL);
+static DEVICE_ATTR(unique_number, (S_IRUSR|S_IRGRP), mmc_gen_unique_number_show, NULL);
 
 static ssize_t mmc_dsr_show(struct device *dev,
 			    struct device_attribute *attr,
@@ -852,6 +893,9 @@ static struct attribute *mmc_std_attrs[] = {
 	&dev_attr_rca.attr,
 	&dev_attr_dsr.attr,
 	&dev_attr_cmdq_en.attr,
+	&dev_attr_unique_number.attr,
+	&dev_attr_caps.attr,
+	&dev_attr_caps2.attr,
 	NULL,
 };
 ATTRIBUTE_GROUPS(mmc_std);
@@ -967,8 +1011,9 @@ static void mmc_set_bus_speed(struct mmc_card *card)
 {
 	unsigned int max_dtr = (unsigned int)-1;
 
-	if ((mmc_card_hs200(card) || mmc_card_hs400(card)) &&
-	     max_dtr > card->ext_csd.hs200_max_dtr)
+	if ((mmc_card_hs200(card) || mmc_card_hs400(card) ||
+				mmc_card_hs400es(card)) &&
+			max_dtr > card->ext_csd.hs200_max_dtr)
 		max_dtr = card->ext_csd.hs200_max_dtr;
 	else if (mmc_card_hs(card) && max_dtr > card->ext_csd.hs_max_dtr)
 		max_dtr = card->ext_csd.hs_max_dtr;
@@ -1340,6 +1385,7 @@ static int mmc_select_hs400es(struct mmc_card *card)
 	if (card->mmc_avail_type & EXT_CSD_CARD_TYPE_HS400_1_2V)
 		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_120);
 
+
 	if (err && card->mmc_avail_type & EXT_CSD_CARD_TYPE_HS400_1_8V)
 		err = mmc_set_signal_voltage(host, MMC_SIGNAL_VOLTAGE_180);
 
@@ -1401,12 +1447,13 @@ static int mmc_select_hs400es(struct mmc_card *card)
 	}
 
 	/* Set host controller to HS400 timing and frequency */
-	mmc_set_timing(host, MMC_TIMING_MMC_HS400);
+	mmc_set_timing(host, MMC_TIMING_MMC_HS400_ES);
 
 	/* Controller enable enhanced strobe function */
 	host->ios.enhanced_strobe = true;
 	if (host->ops->hs400_enhanced_strobe)
 		host->ops->hs400_enhanced_strobe(host, &host->ios);
+	mmc_set_bus_speed(card);
 
 	err = mmc_switch_status(card);
 	if (err)
@@ -2053,6 +2100,7 @@ static int mmc_suspend(struct mmc_host *host)
 		pm_runtime_disable(&host->card->dev);
 		pm_runtime_set_suspended(&host->card->dev);
 	}
+	dbg_snapshot_printk("%s : mmc suspend order check", __func__);
 
 	return err;
 }
@@ -2106,6 +2154,8 @@ static int mmc_shutdown(struct mmc_host *host)
 static int mmc_resume(struct mmc_host *host)
 {
 	pm_runtime_enable(&host->card->dev);
+	dbg_snapshot_printk("%s : mmc resume order check", __func__);
+
 	return 0;
 }
 
@@ -2124,6 +2174,8 @@ static int mmc_runtime_suspend(struct mmc_host *host)
 		pr_err("%s: error %d doing aggressive suspend\n",
 			mmc_hostname(host), err);
 
+	dbg_snapshot_printk("%s : mmc suspend order check", __func__);
+
 	return err;
 }
 
@@ -2138,6 +2190,8 @@ static int mmc_runtime_resume(struct mmc_host *host)
 	if (err && err != -ENOMEDIUM)
 		pr_err("%s: error %d doing runtime resume\n",
 			mmc_hostname(host), err);
+
+	dbg_snapshot_printk("%s : mmc resume order check", __func__);
 
 	return 0;
 }

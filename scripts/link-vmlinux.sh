@@ -361,3 +361,8 @@ if [ -n "${CONFIG_KALLSYMS}" ]; then
 		exit 1
 	fi
 fi
+
+if [ -n "${CONFIG_EXYNOS_FMP_FIPS}" ]; then
+    echo '  FIPS : Generating hmac of fmp and updating vmlinux... '
+	PYTHONDONTWRITEBYTECODE=0 "${srctree}/scripts/fmp/fips_fmp_integrity.py" "${objtree}/vmlinux"
+fi
