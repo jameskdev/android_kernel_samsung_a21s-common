@@ -4637,7 +4637,7 @@
 	};
 
 	chosen {
-		bootargs = "androidboot.hardware=exynos850 console=ram skip_initramfs rootwait ro root=/dev/ram0 androidboot.boot_devices=12100000.dwmmc0 init=/init clk_ignore_unused firmware_class.path=/vendor/firmware reserve-fimc=0xffffff90f9fe0000 rcupdate.rcu_expedited=1";
+		bootargs = "androidboot.hardware=exynos850 console=ram rootwait ro root=/dev/ram0 androidboot.boot_devices=12100000.dwmmc0 init=/init clk_ignore_unused firmware_class.path=/vendor/firmware reserve-fimc=0xffffff90f9fe0000 rcupdate.rcu_expedited=1";
 		linux,initrd-start = <0x84000000>;
 		linux,initrd-end = <0x842fffff>;
 		phandle = <0x12e>;
