@@ -46,10 +46,12 @@ static struct hlist_head *all_lists[] = {
 	NULL,
 };
 
+#ifndef CONFIG_ARCH_EXYNOS
 static struct hlist_head *orphan_list[] = {
 	&clk_orphan_list,
 	NULL,
 };
+#endif
 
 /***    private data structures    ***/
 
