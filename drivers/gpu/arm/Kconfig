@@ -33,6 +33,9 @@ config MALI_BIFROST_R26P0
 config MALI_BIFROST_R31P0
 	depends on MALI_DDK_VERSION
 	bool "Bifrost r31p0 driver"
+config MALI_BIFROST_R32P0
+	depends on MALI_DDK_VERSION
+	bool "Bifrost r32p0 driver"
 endchoice
 if MALI_BIFROST_R19P0
 source "drivers/gpu/arm/b_r19p0/Kconfig"
@@ -42,5 +45,8 @@ source "drivers/gpu/arm/b_r26p0/Kconfig"
 endif
 if MALI_BIFROST_R31P0
 source "drivers/gpu/arm/b_r31p0/Kconfig"
+endif
+if MALI_BIFROST_R32P0
+source "drivers/gpu/arm/b_r32p0/Kconfig"
 endif
 endmenu
