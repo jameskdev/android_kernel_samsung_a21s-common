@@ -232,8 +232,10 @@ INCLUDE_SUBDIR = \
     $(src)/mmu/Kbuild \
     $(src)/tl/Kbuild \
     $(src)/gpu/Kbuild \
-    $(src)/thirdparty/Kbuild \
-    $(src)/platform/$(MALI_PLATFORM_DIR)/Kbuild
+    $(src)/thirdparty/Kbuild
+#   $(src)/platform/$(MALI_PLATFORM_DIR)/Kbuild
+
+obj-$(CONFIG_MALI_MIDGARD) += platform/
 
 ifeq ($(CONFIG_MALI_CSF_SUPPORT),y)
     INCLUDE_SUBDIR += $(src)/csf/Kbuild

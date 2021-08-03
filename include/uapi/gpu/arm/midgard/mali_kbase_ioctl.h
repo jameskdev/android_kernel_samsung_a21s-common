@@ -632,6 +632,44 @@ struct kbase_ioctl_mem_exec_init {
 #define KBASE_IOCTL_MEM_EXEC_INIT \
 	_IOW(KBASE_IOCTL_TYPE, 38, struct kbase_ioctl_mem_exec_init)
 
+/************************
+ * MALI_SEC_INTEGRATION *
+ ************************/
+/* IOCTLs 36-41 are reserved */
+/* IOCTL 42 is free for use */
+
+/*
+ * struct kbase_ioctl_slsi_combination_boost_flags - Update the status of combination boost flag
+ * @flags: Flags for future expansion
+ */
+struct kbase_ioctl_slsi_combination_boost_flags {
+	__u32 flags;
+};
+
+#define KBASE_IOCTL_SLSI_COMBINATION_BOOST_FLAGS \
+	_IOW(KBASE_IOCTL_TYPE, 42, struct kbase_ioctl_slsi_combination_boost_flags)
+
+/*
+ * struct kbase_ioctl_slsi_vk_boost_flags - Update the status of vk boost flag
+ * @flags: Flags for future expansion
+ */
+struct kbase_ioctl_slsi_vk_boost_flags {
+	__u32 flags;
+};
+
+#define KBASE_IOCTL_SLSI_VK_BOOST_FLAGS \
+	_IOW(KBASE_IOCTL_TYPE, 43, struct kbase_ioctl_slsi_vk_boost_flags)
+
+/*
+ * struct kbase_ioctl_slsi_negative_boost_flags - Update the status of negative boost flag
+ * @flags: Flags for future expansion
+ */
+struct kbase_ioctl_slsi_negative_boost_flags {
+	__u32 flags;
+};
+
+#define KBASE_IOCTL_SLSI_NEGATIVE_BOOST_FLAGS \
+	_IOW(KBASE_IOCTL_TYPE, 44, struct kbase_ioctl_slsi_negative_boost_flags)
 /**
  * union kbase_ioctl_get_cpu_gpu_timeinfo - Request zero or more types of
  *                                          cpu/gpu time (counter values)
@@ -727,7 +765,20 @@ struct kbase_ioctl_tlstream_stats {
  *         _IOWR(KBASE_IOCTL_EXTRA_TYPE, 0, struct my_ioctl_args)
  */
 
+/* MALI_SEC_INTEGRATION */
+/**
+ * struct kbase_ioctl_mem_usage_add - Provide gpu memory usage information to kernel
+ * @gl_mem_usage: gpu memory used
+ *
+ * The data provided is accessible through a sysfs file
+ */
+struct kbase_ioctl_slsi_mem_usage_add {
+	__u64 gl_mem_usage;
+};
 
+#define KBASE_IOCTL_SLSI_MEM_USAGE_ADD \
+   _IOW(KBASE_IOCTL_EXTRA_TYPE, 3, struct kbase_ioctl_slsi_mem_usage_add)
+   
 /**********************************
  * Definitions for GPU properties *
  **********************************/
