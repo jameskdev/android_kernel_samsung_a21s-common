@@ -52,7 +52,7 @@ config MALI_REAL_HW
 	def_bool !MALI_NO_MALI
 
 menu "Platform specific options"
-source "drivers/gpu/arm/b_r32p0/platform/Kconfig"
+source "drivers/gpu/arm/b_r33p0/platform/Kconfig"
 endmenu
 
 config MALI_CSF_SUPPORT
@@ -379,9 +379,9 @@ config MALI_ARBITRATION
 	  If unsure, say N.
 
 if MALI_ARBITRATION
-source "drivers/gpu/arm/b_r32p0/arbitration/Kconfig"
+source "drivers/gpu/arm/b_r33p0/arbitration/Kconfig"
 endif
 
-source "drivers/gpu/arm/b_r32p0/tests/Kconfig"
+source "drivers/gpu/arm/b_r33p0/tests/Kconfig"
 
 endif
